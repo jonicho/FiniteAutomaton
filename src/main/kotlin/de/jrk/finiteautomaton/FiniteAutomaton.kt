@@ -5,7 +5,7 @@ package de.jrk.finiteautomaton
  * something is added that would make the automaton non-deterministic) if [forceDeterminism] is ```true```.
  */
 class FiniteAutomaton(alphabet: List<Char>, val forceDeterminism: Boolean = false) {
-    private val states: MutableList<State> = mutableListOf()
+    private val states: MutableSet<State> = mutableSetOf()
 
     /**
      * This automaton's alphabet
@@ -27,61 +27,74 @@ class FiniteAutomaton(alphabet: List<Char>, val forceDeterminism: Boolean = fals
         ).also {
             it.states.addAll(states.map { state ->
                 State(
+                    state.name,
                     state.accepting,
                     state.initial,
-                    state.transitions.toMutableList()
+                    state.transitions.toMutableSet()
                 )
             })
         }
 
     /**
-     * Returns whether the given [state] is an initial state.
+     * Returns whether the state with the given [stateName] is an initial state.
+     * Returns ```null``` if there is no such state.
      */
-    fun isStateInitial(state: Int) = states[state].initial
+    fun isStateInitial(stateName: String) = states[stateName]?.initial
 
     /**
-     * Returns whether the given [state] is accepting.
+     * Returns whether the state with the given [stateName] is accepting.
+     * Returns ```null``` if there is no such state.
      */
-    fun isStateAccepting(state: Int) = states[state].accepting
+    fun isStateAccepting(stateName: String) = states[stateName]?.accepting
 
     /**
-     * Returns the indices of the target states of the transitions going from the given [startState].
+     * Returns the names of the target states of the transitions going from the state with the given [startStateName].
+     * Returns ```null``` if there is no state with the given [startStateName].
      */
-    fun getTransitions(startState: Int) = states[startState].transitions.map { it.targetState }
+    fun getTransitions(startStateName: String) = states[startStateName]?.transitions?.map { it.targetState.name }
 
     /**
-     * Returns the input characters of the transition from the given [startState] to the given [targetState].
+     * Returns the input characters of the transition from the state with the given [startStateName] to
+     * the state with the given [targetStateName].
      * Returns ```null``` if there is no such transition.
      */
-    fun getInputCharacters(startState: Int, targetState: Int) =
-        states[startState].transitions.find { it.targetState == targetState }?.inputCharacters
+    fun getInputCharacters(startStateName: String, targetStateName: String) =
+        states[startStateName]?.transitions?.find { it.targetState == states[targetStateName] ?: return null }?.inputCharacters
 
     /**
-     * Adds a state which can be [accepting] and/or [initial].
+     * Adds a state with the given [stateName] which can be [accepting] and/or [initial].
      */
-    fun addState(accepting: Boolean = false, initial: Boolean = false) {
+    fun addState(stateName: String, accepting: Boolean = false, initial: Boolean = false) {
         if (forceDeterminism && states.any { it.initial }) {
             throw IllegalStateException("There can only be one initial state in a deterministic automaton!")
         }
-        states.add(State(initial, accepting))
+        val added = states.add(State(stateName, initial, accepting))
+        if (!added) {
+            throw IllegalArgumentException("State $stateName already exists!")
+        }
     }
 
     /**
-     * Adds a transition going from the given [startState] to the given [targetState] with the given [inputCharacters].
+     * Adds a transition going from the state with the given [startStateName]
+     * to the state with the given [targetStateName] with the given [inputCharacters].
      */
-    fun addTransition(startState: Int, targetState: Int, inputCharacters: List<Char>) {
-        if (states[startState].transitions.any { it.targetState == targetState }) {
-            throw IllegalArgumentException("There is already a transition from state $startState to state $targetState!")
+    fun addTransition(startStateName: String, targetStateName: String, inputCharacters: List<Char>) {
+        val startState =
+            states[startStateName] ?: throw IllegalArgumentException("State $startStateName does not exist!")
+        val targetState =
+            states[targetStateName] ?: throw IllegalArgumentException("State $targetStateName does not exist!")
+        if (startState.transitions.any { it.targetState == targetState }) {
+            throw IllegalArgumentException("There is already a transition from state $startStateName to state $targetStateName!")
         }
         if (!alphabet.containsAll(inputCharacters)) {
             throw IllegalArgumentException("The input characters have to a subset of the alphabet!")
         }
-        if (forceDeterminism && states[startState].transitions.any { transition ->
+        if (forceDeterminism && startState.transitions.any { transition ->
                 transition.inputCharacters.any { it in inputCharacters }
             }) {
             throw IllegalArgumentException("In an deterministic automaton a input character can only be in one transition of a state.")
         }
-        states[startState].transitions.add(Transition(targetState, inputCharacters.toList()))
+        startState.transitions.add(Transition(targetState, inputCharacters.toList()))
     }
 
     /**
@@ -89,8 +102,8 @@ class FiniteAutomaton(alphabet: List<Char>, val forceDeterminism: Boolean = fals
      */
     fun isDeterministic() =
         states.count { it.initial } <= 1
-                && !states.any { state -> state.transitions.any { transition -> transition.inputCharacters.isEmpty() } }
-                && !states.any { state ->
+                && states.none { state -> state.transitions.any { transition -> transition.inputCharacters.isEmpty() } }
+                && states.none { state ->
             state.transitions.any { transition ->
                 transition.inputCharacters.any { char ->
                     state.transitions.minus(transition).any { char in it.inputCharacters }
@@ -105,22 +118,28 @@ class FiniteAutomaton(alphabet: List<Char>, val forceDeterminism: Boolean = fals
         if (!isDeterministic()) {
             TODO("Not implemented for non-deterministic automatons!")
         }
-        var currentState = states.indexOfFirst { it.initial }
-        if (currentState == -1) {
-            throw IllegalStateException("This automaton does not have an initial state!")
-        }
+        var currentState =
+            states.find { it.initial } ?: throw IllegalStateException("This automaton does not have an initial state!")
         string.forEach { char ->
-            currentState =
-                states[currentState].transitions.find { char in it.inputCharacters }?.targetState ?: return false
+            currentState = currentState.transitions.find { char in it.inputCharacters }?.targetState ?: return false
         }
-        return states[currentState].accepting
+        return currentState.accepting
     }
 
     private data class State(
+        val name: String,
         val accepting: Boolean = false,
         val initial: Boolean = false,
-        val transitions: MutableList<Transition> = mutableListOf()
-    )
+        val transitions: MutableSet<Transition> = mutableSetOf()
+    ) {
+        override fun equals(other: Any?) = other is State && other.name == name
+        override fun hashCode() = name.hashCode()
+    }
 
-    private data class Transition(val targetState: Int, val inputCharacters: List<Char>)
+    private data class Transition(val targetState: State, val inputCharacters: List<Char>) {
+        override fun equals(other: Any?) = other is Transition && other.targetState == targetState
+        override fun hashCode() = targetState.hashCode()
+    }
+
+    private operator fun MutableSet<State>.get(name: String): State? = find { it.name == name }
 }
