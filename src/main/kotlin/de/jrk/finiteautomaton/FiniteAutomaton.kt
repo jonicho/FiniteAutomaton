@@ -73,7 +73,7 @@ class FiniteAutomaton(alphabet: List<Char>, val forceDeterminism: Boolean = fals
         if (forceDeterminism && states.any { it.initial }) {
             throw IllegalStateException("There can only be one initial state in a deterministic automaton!")
         }
-        val added = states.add(State(stateName, initial, accepting))
+        val added = states.add(State(stateName, accepting, initial))
         if (!added) {
             throw IllegalArgumentException("State $stateName already exists!")
         }
