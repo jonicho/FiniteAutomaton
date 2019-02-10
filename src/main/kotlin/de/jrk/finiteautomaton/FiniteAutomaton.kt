@@ -70,7 +70,7 @@ class FiniteAutomaton(alphabet: List<Char>, val forceDeterminism: Boolean = fals
      * Adds a state with the given [stateName] which can be [accepting] and/or [initial].
      */
     fun addState(stateName: String, accepting: Boolean = false, initial: Boolean = false) {
-        if (forceDeterminism && states.any { it.initial }) {
+        if (forceDeterminism && initial && states.any { it.initial }) {
             throw IllegalStateException("There can only be one initial state in a deterministic automaton!")
         }
         val added = states.add(State(stateName, accepting, initial))
