@@ -131,6 +131,11 @@ class FiniteAutomaton(alphabet: List<Char>, val forceDeterminism: Boolean = fals
         return currentState.accepting
     }
 
+
+    override fun toString(): String {
+        return "FiniteAutomaton(forceDeterminism=$forceDeterminism, alphabet=$alphabet, states=$states)"
+    }
+
     private data class State(
         val name: String,
         val accepting: Boolean = false,
@@ -144,6 +149,7 @@ class FiniteAutomaton(alphabet: List<Char>, val forceDeterminism: Boolean = fals
     private data class Transition(val targetState: State, val inputCharacters: List<Char>) {
         override fun equals(other: Any?) = other is Transition && other.targetState == targetState
         override fun hashCode() = targetState.hashCode()
+        override fun toString() = "Transition(targetState=${targetState.name}, inputCharacters=$inputCharacters)"
     }
 
     private operator fun MutableSet<State>.get(name: String): State? = find { it.name == name }
