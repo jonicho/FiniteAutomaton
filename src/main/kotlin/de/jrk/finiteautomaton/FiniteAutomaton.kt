@@ -13,6 +13,11 @@ class FiniteAutomaton(alphabet: List<Char>, val forceDeterminism: Boolean = fals
     val alphabet: List<Char> = alphabet.toList()
 
     /**
+     * The names of all states.
+     */
+    val stateNames get() = states.map { it.name }
+
+    /**
      * The number of states in this automaton.
      */
     val size get() = states.size
