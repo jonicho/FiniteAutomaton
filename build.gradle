@@ -8,6 +8,7 @@ repositories {
 
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    compile "org.json:json:20180813"
 }
 
 compileKotlin {
