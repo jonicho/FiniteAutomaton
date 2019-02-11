@@ -70,8 +70,8 @@ class FiniteAutomaton(alphabet: List<Char>, val forceDeterminism: Boolean = fals
      * Adds a state with the given [stateName] which can be [accepting] and/or [initial].
      */
     fun addState(stateName: String, accepting: Boolean = false, initial: Boolean = false) {
-        if (forceDeterminism && initial && states.any { it.initial }) {
-            throw IllegalStateException("There can only be one initial state in a deterministic automaton!")
+        if (forceDeterminism && initial) {
+            require(states.none { it.initial }) { "There can only be one initial state in a deterministic automaton!" }
         }
         val added = states.add(State(stateName, accepting, initial))
         if (!added) {
@@ -84,20 +84,14 @@ class FiniteAutomaton(alphabet: List<Char>, val forceDeterminism: Boolean = fals
      * to the state with the given [targetStateName] with the given [inputCharacters].
      */
     fun addTransition(startStateName: String, targetStateName: String, inputCharacters: List<Char>) {
-        val startState =
-            states[startStateName] ?: throw IllegalArgumentException("State $startStateName does not exist!")
-        val targetState =
-            states[targetStateName] ?: throw IllegalArgumentException("State $targetStateName does not exist!")
-        if (startState.transitions.any { it.targetState == targetState }) {
-            throw IllegalArgumentException("There is already a transition from state $startStateName to state $targetStateName!")
-        }
-        if (!alphabet.containsAll(inputCharacters)) {
-            throw IllegalArgumentException("The input characters have to a subset of the alphabet!")
-        }
-        if (forceDeterminism && startState.transitions.any { transition ->
+        val startState = requireNotNull(states[startStateName]) { "State $startStateName does not exist!" }
+        val targetState = requireNotNull(states[targetStateName]) { "State $targetStateName does not exist!" }
+        require(startState.transitions.none { it.targetState == targetState }) { "There is already a transition from state $startStateName to state $targetStateName!" }
+        require(alphabet.containsAll(inputCharacters)) { "The input characters have to a subset of the alphabet!" }
+        if (forceDeterminism) {
+            require(startState.transitions.none { transition ->
                 transition.inputCharacters.any { it in inputCharacters }
-            }) {
-            throw IllegalArgumentException("In an deterministic automaton a input character can only be in one transition of a state.")
+            }) { "In an deterministic automaton a input character can only be in one transition of a state." }
         }
         startState.transitions.add(Transition(targetState, inputCharacters.toList()))
     }
