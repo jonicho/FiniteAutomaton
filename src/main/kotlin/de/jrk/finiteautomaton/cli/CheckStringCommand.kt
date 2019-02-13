@@ -11,13 +11,13 @@ import kotlin.system.exitProcess
 
 class CheckStringCommand :
     CliktCommand(name = "checkstring", help = "Checks whether the given automaton accepts the given string") {
-    val automatonFile by argument(help = "The automaton json file").path(
+    private val automatonFile by argument(help = "The automaton json file").path(
         exists = true,
         folderOkay = false,
         readable = true
     )
-    val string by argument(help = "The string to check")
-    val boolean by option("-b", "--boolean", help = "Only show a boolean value instead of a sentence").flag()
+    private val string by argument(help = "The string to check")
+    private val boolean by option("-b", "--boolean", help = "Only show a boolean value instead of a sentence").flag()
 
     override fun run() {
         val jsonString = try {
